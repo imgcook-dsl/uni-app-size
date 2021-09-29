@@ -1,259 +1,267 @@
-module.exports = function (schema, options) {
+module.exports = function(schema, options) {
 
-  const { _, helper, prettier, responsive } = options;
-  const { printer, utils } = helper;
+	const {
+		_,
+		helper,
+		prettier,
+		responsive
+	} = options;
+	const {
+		printer,
+		utils
+	} = helper;
 
-  // 渲染数据
-  const renderData = {};
+	// 渲染数据
+	const renderData = {};
 
-  // style
-  const styleMap = {};
+	// style
+	const styleMap = {};
 
-  // mock data
-  const mockData = {
-    properties: {},
-    data: {}
-  };
+	// mock data
+	const mockData = {
+		properties: {},
+		data: {}
+	};
 
-  // script
-  const scriptMap = {
-    created: '',
-    lifetimes: {},
-    methods: {},
-    data: {},
-    event: {}
-  };
+	// script
+	const scriptMap = {
+		created: '',
+		lifetimes: {},
+		methods: {},
+		data: {},
+		event: {}
+	};
 
-  // 宽高
-  let modConfig = responsive || {
-    width: 375,
-    height: 1334
-  };
+	// 宽高
+	let modConfig = responsive || {
+		width: 750,
+		height: 1334
+	};
 
-  // 代码缩进
-  const line = (content, level) =>
-    utils.line(content, {
-      indent: {
-        space: level * 4
-      }
-    });
+	// 代码缩进
+	const line = (content, level) =>
+		utils.line(content, {
+			indent: {
+				space: level * 4
+			}
+		});
 
-  const prettierOpt = {
-    parser: 'vue',
-    tabWidth: 4,
-    printWidth: 120,
-    singleQuote: true
-  };
+	const prettierOpt = {
+		parser: 'vue',
+		tabWidth: 4,
+		printWidth: 120,
+		singleQuote: true
+	};
 
-  const parseStyleObject = style =>
-    Object.entries(style)
-    .filter(([, value]) => value || value === 0)
-    .map(([key, value]) => {
-      key = _.kebabCase(key);
-      return `${key}: ${normalizeStyleValue(key, value, modConfig)};`;
-    });
+	const parseStyleObject = style =>
+		Object.entries(style)
+		.filter(([, value]) => value || value === 0)
+		.map(([key, value]) => {
+			key = _.kebabCase(key);
+			return `${key}: ${normalizeStyleValue(key, value, modConfig)};`;
+		});
 
-  const renderStyleItem = (className, style) => [
-    line(`.${className} {`),
-    ...parseStyleObject(style).map(item => line(item, 1)),
-    line('}')
-  ];
+	const renderStyleItem = (className, style) => [
+		line(`.${className} {`),
+		...parseStyleObject(style).map(item => line(item, 1)),
+		line('}')
+	];
 
-  const renderStyle = map => [].concat(
-    ...Object.entries(map).map(([className, style]) =>
-      renderStyleItem(className, style)
-    )
-  );
+	const renderStyle = map => [].concat(
+		...Object.entries(map).map(([className, style]) =>
+			renderStyleItem(className, style)
+		)
+	);
 
-  const normalizeTemplateAttrValue = ({
-    key,
-    value
-  }) => {
-    if (typeof value === 'string') {
-      return JSON.stringify(value);
-    } else if (key === 'style') {
-      var str = '"';
-      Object.entries(value).map(([k, val]) => {
-        k = _.kebabCase(k);
-        str += `${k}:${normalizeStyleValue(k, val, modConfig)};`
-      });
-      return `${str}"`;
-    } else {
-      return `"${JSON.stringify(value)}"`;
-    }
-  };
+	const normalizeTemplateAttrValue = ({
+		key,
+		value
+	}) => {
+		if (typeof value === 'string') {
+			return JSON.stringify(value);
+		} else if (key === 'style') {
+			var str = '"';
+			Object.entries(value).map(([k, val]) => {
+				k = _.kebabCase(k);
+				str += `${k}:${normalizeStyleValue(k, val, modConfig)};`
+			});
+			return `${str}"`;
+		} else {
+			return `"${JSON.stringify(value)}"`;
+		}
+	};
 
-  const renderTemplateAttr = (key, value) =>
-    `${key}=${normalizeTemplateAttrValue({key, value})}`;
+	const renderTemplateAttr = (key, value) =>
+		`${key}=${normalizeTemplateAttrValue({key, value})}`;
 
-  let depth = 0;
-  let {
-    dataSource,
-    methods,
-    lifeCycles,
-    state
-  } = schema;
+	let depth = 0;
+	let {
+		dataSource,
+		methods,
+		lifeCycles,
+		state
+	} = schema;
 
-  const renderTemplate = (obj, level = 0) => {
-    depth = depth + 1;
+	const renderTemplate = (obj, level = 0) => {
+		depth = depth + 1;
 
-    // handle node changetype
-    const targetName = obj.componentName.toLowerCase();
-    obj.element = COMPONENT_TYPE_MAP[targetName] || targetName;
+		// handle node changetype
+		const targetName = obj.componentName.toLowerCase();
+		obj.element = COMPONENT_TYPE_MAP[targetName] || targetName;
 
-    if (!obj.props) obj.props = {};
+		if (!obj.props) obj.props = {};
 
-    // loop handler
-    if (obj.loop) {
-      if (typeof obj.loop === 'string') {
-        obj.props[WXS_SYNTAX_MAP['for']] = `{{${obj.loop.split('.').pop()}`;
-      } else {
-        obj.props[WXS_SYNTAX_MAP['for']] = `{{${JSON.stringify(obj.loop)}}}`
-      }
-      obj.props[WXS_SYNTAX_MAP['forItem']] = obj.loopArgs && `${obj.loopArgs[0]}` || 'item';
-      obj.props[WXS_SYNTAX_MAP['forIndex']] = obj.loopArgs && `${obj.loopArgs[1]}` || 'index';
-    }
+		// loop handler
+		if (obj.loop) {
+			if (typeof obj.loop === 'string') {
+				obj.props[WXS_SYNTAX_MAP['for']] = `{{${obj.loop.split('.').pop()}`;
+			} else {
+				obj.props[WXS_SYNTAX_MAP['for']] = `{{${JSON.stringify(obj.loop)}}}`
+			}
+			obj.props[WXS_SYNTAX_MAP['forItem']] = obj.loopArgs && `${obj.loopArgs[0]}` || 'item';
+			obj.props[WXS_SYNTAX_MAP['forIndex']] = obj.loopArgs && `${obj.loopArgs[1]}` || 'index';
+		}
 
-    const handlerFuncStr = options => {
-      let {
-        value,
-        item
-      } = options;
-      if (value.content && item) {
-        value.content = value.content.replace(
-          new RegExp('this.' + item + '.', 'g'),
-          'e.currentTarget.dataset.'
-        );
-      }
-      return value;
-    };
+		const handlerFuncStr = options => {
+			let {
+				value,
+				item
+			} = options;
+			if (value.content && item) {
+				value.content = value.content.replace(
+					new RegExp('this.' + item + '.', 'g'),
+					'e.currentTarget.dataset.'
+				);
+			}
+			return value;
+		};
 
-    // condition handler
-    if (obj.condition) {
-      obj.props[WXS_SYNTAX_MAP['condition']] = `${obj.condition}`;
-    }
+		// condition handler
+		if (obj.condition) {
+			obj.props[WXS_SYNTAX_MAP['condition']] = `${obj.condition}`;
+		}
 
-    // event handler
-    for (let [key, value] of Object.entries(obj.props)) {
-      if (COMPONENT_EVENT_MAP[key]) {
-        obj.props[COMPONENT_EVENT_MAP[key]] = key;
-        scriptMap.methods[key] = handlerFuncStr({
-          value: parseFunction(value),
-          item: obj.props[WXS_SYNTAX_MAP['forItem']]
-        });
-      }
-      if (typeof value === 'string' && value.match(/this\./)) {
-        obj.props[key] = value.replace(/this\./g, '');
-      }
-    }
+		// event handler
+		for (let [key, value] of Object.entries(obj.props)) {
+			if (COMPONENT_EVENT_MAP[key]) {
+				obj.props[COMPONENT_EVENT_MAP[key]] = key;
+				scriptMap.methods[key] = handlerFuncStr({
+					value: parseFunction(value),
+					item: obj.props[WXS_SYNTAX_MAP['forItem']]
+				});
+			}
+			if (typeof value === 'string' && value.match(/this\./)) {
+				obj.props[key] = value.replace(/this\./g, '');
+			}
+		}
 
-    switch (obj.element) {
-      case 'view':
-        obj.element = 'view';
-        break;
-      case 'picture':
-        obj.element = 'image';
-        obj.children = null;
-        break;
-      case 'text':
-        obj.children = obj.props.text;
-        break;
-    }
+		switch (obj.element) {
+			case 'view':
+				obj.element = 'view';
+				break;
+			case 'picture':
+				obj.element = 'img';
+				obj.children = null;
+				break;
+			case 'text':
+				obj.children = obj.props.text;
+				break;
+		}
 
-    if (obj.props.className) {
-      obj.props.class = _.kebabCase(obj.props.className);
-      delete obj.props.className;
-      styleMap[obj.props.class] = {
-        ...styleMap[obj.props.class],
-        ...obj.props.style
-      };
-    }
-    if (obj.props.source && obj.props.src) {
-      obj.props.src = obj.props.source;
-      delete obj.props.source;
-    }
+		if (obj.props.className) {
+			obj.props.class = _.kebabCase(obj.props.className);
+			delete obj.props.className;
+			styleMap[obj.props.class] = {
+				...styleMap[obj.props.class],
+				...obj.props.style
+			};
+		}
+		if (obj.props.source && obj.props.src) {
+			obj.props.src = obj.props.source;
+			delete obj.props.source;
+		}
 
-    let ret = [];
-    let nextLine = '';
+		let ret = [];
+		let nextLine = '';
 
-    const props = Object.entries(obj.props).filter(([key, value]) => {
-      if (key === 'style' && obj.props && !obj.props.class) {
-        return true;
-      }
-      return ['style', 'text', 'onClick'].indexOf(key) < 0;
-    });
+		const props = Object.entries(obj.props).filter(([key, value]) => {
+			if (key === 'style' && obj.props && !obj.props.class) {
+				return true;
+			}
+			return ['style', 'text', 'onClick'].indexOf(key) < 0;
+		});
 
-    if (props.length > 3) {
-      ret.push(line(`<${obj.element}`, level));
-      ret = ret.concat(
-        props.map(([key, value]) => {
-          return line(renderTemplateAttr(key, value), level + 1);
-        })
-      );
-    } else {
-      nextLine = `<${obj.element}`;
-      if (props.length) {
-        nextLine += ` ${props
+		if (props.length > 3) {
+			ret.push(line(`<${obj.element}`, level));
+			ret = ret.concat(
+				props.map(([key, value]) => {
+					return line(renderTemplateAttr(key, value), level + 1);
+				})
+			);
+		} else {
+			nextLine = `<${obj.element}`;
+			if (props.length) {
+				nextLine += ` ${props
           .map(([key, value]) => {
             return renderTemplateAttr(key, value);
           })
           .join(' ')}`;
-      }
-    }
+			}
+		}
 
-    if (obj.children) {
-      if (Array.isArray(obj.children) && obj.children.length) {
-        // Multi-line Child
-        ret.push(line(`${nextLine}>`, level));
-        ret = ret.concat(
-          ...obj.children.map(o => {
-            return renderTemplate(o, level + 1);
-          })
-        );
-        ret.push(line(`</${obj.element}>`, level));
-      } else {
-        // Single line Child
-        ret.push(line(`${nextLine}>${obj.children}</${obj.element}>`, level));
-      }
-    } else {
-      // Self-closing label
-      ret.push(line(`${nextLine} />`, level));
-    }
-    return ret;
-  };
+		if (obj.children) {
+			if (Array.isArray(obj.children) && obj.children.length) {
+				// Multi-line Child
+				ret.push(line(`${nextLine}>`, level));
+				ret = ret.concat(
+					...obj.children.map(o => {
+						return renderTemplate(o, level + 1);
+					})
+				);
+				ret.push(line(`</${obj.element}>`, level));
+			} else {
+				// Single line Child
+				ret.push(line(`${nextLine}>${obj.children}</${obj.element}>`, level));
+			}
+		} else {
+			// Self-closing label
+			ret.push(line(`${nextLine} />`, level));
+		}
+		return ret;
+	};
 
-  // methods handler
-  methods &&
-    Object.entries(methods).map(([key, value]) => {
-      scriptMap.methods[key] = parseFunction(value);
-    });
+	// methods handler
+	methods &&
+		Object.entries(methods).map(([key, value]) => {
+			scriptMap.methods[key] = parseFunction(value);
+		});
 
-  // lifeCycles handler
-  lifeCycles &&
-    Object.entries(lifeCycles).map(([key, value]) => {
-      scriptMap[COMPONENT_LIFETIMES_MAP[key]] = parseFunction(value);
-    });
+	// lifeCycles handler
+	lifeCycles &&
+		Object.entries(lifeCycles).map(([key, value]) => {
+			scriptMap[COMPONENT_LIFETIMES_MAP[key]] = parseFunction(value);
+		});
 
-  state &&
-    Object.entries(state).map(([key, value]) => {
-      if (value instanceof Array) {
-        scriptMap.data[key] = '[]';
-      } else {
-        scriptMap.data[key] = JSON.stringify(value);
-      }
-    });
+	state &&
+		Object.entries(state).map(([key, value]) => {
+			if (value instanceof Array) {
+				scriptMap.data[key] = '[]';
+			} else {
+				scriptMap.data[key] = JSON.stringify(value);
+			}
+		});
 
-  const renderScript = scriptMap => {
-    const {
-      attached,
-      detached,
-      methods,
-      created,
-      data
-    } = scriptMap;
-    const properties = [];
+	const renderScript = scriptMap => {
+		const {
+			attached,
+			detached,
+			methods,
+			created,
+			data
+		} = scriptMap;
+		const properties = [];
 
-    return `
+		return `
     export default {
       data() {
         return {}
@@ -264,41 +272,41 @@ module.exports = function (schema, options) {
       methods: {}
     }
     `;
-  };
+	};
 
-  const generatorVueTemplate = template => {
-    template.unshift(line('<template>'));
-    return template.concat(line(`</template>
+	const generatorVueTemplate = template => {
+		template.unshift(line('<template>'));
+		return template.concat(line(`</template>
 
 <script>
   ${renderData.js}
 </script>
     
 <style lang="scss" scoped>
-  @import './index.scss';
+   @import './index.scss';
 </style>`))
-  };
+	};
 
-  renderData.wxml = printer(renderTemplate(schema, 1));
-  renderData.wxss = printer(renderStyle(styleMap));
-  renderData.js = prettier.format(renderScript(scriptMap), {
-    parser: 'babel'
-  });
+	renderData.wxml = printer(renderTemplate(schema, 1));
+	renderData.wxss = printer(renderStyle(styleMap));
+	renderData.js = prettier.format(renderScript(scriptMap), {
+		parser: 'babel'
+	});
 
-  renderData.mockData = `var mock = ${JSON.stringify(mockData)}`;
-  renderData.json = printer([
-    line('{'),
-    line('"component": true,', 1),
-    line('"usingComponents": {}', 1),
-    line('}')
-  ]);
+	renderData.mockData = `var mock = ${JSON.stringify(mockData)}`;
+	renderData.json = printer([
+		line('{'),
+		line('"component": true,', 1),
+		line('"usingComponents": {}', 1),
+		line('}')
+	]);
 
-  return {
-    renderData,
-    prettierOpt: {},
-    panelDisplay: [{
-        panelName: 'index.vue',
-        panelValue: prettier.format(`
+	return {
+		renderData,
+		prettierOpt: {},
+		panelDisplay: [{
+				panelName: 'index.vue',
+				panelValue: prettier.format(`
         <template>
           ${renderData.wxml}
         </template>
@@ -308,114 +316,116 @@ module.exports = function (schema, options) {
         </script>
 
         <style lang="scss" scoped>
-          @import './index.scss';
+		  @import './index.scss';
         </style>
         `, prettierOpt),
-        panelType: 'vue'
-      },
-      {
-        panelName: 'index.scss',
-        panelValue: renderData.wxss,
-        panelType: 'BuilderRaxStyle',
-        mode: 'css'
-      },
-    ],
-    playground: {
-      info: 'uniapp 官网',
-      link: 'https://uniapp.dcloud.io/'
-    },
-    noTemplate: true
-  };
+				panelType: 'vue'
+			},
+			{
+				panelName: 'index.scss',
+				panelValue: renderData.wxss,
+				panelType: 'BuilderRaxStyle',
+				mode: 'css'
+			},
+		],
+		playground: {
+			info: '前往下载微信开发者工具',
+			link: 'https://developers.weixin.qq.com/miniprogram/dev/devtools/download.html'
+		},
+		noTemplate: true
+	};
 };
 
 const COMPONENT_TYPE_MAP = {
-  page: 'view',
-  div: 'view',
-  block: 'view',
-  link: 'view',
-  video: 'video',
-  expview: 'view',
-  scroller: 'scroll-view',
-  slider: 'swiper',
-  view: 'view',
-  text: 'text',
-  picture: 'image',
-  image: 'image',
+	page: 'view',
+	div: 'view',
+	block: 'view',
+	link: 'view',
+	video: 'video',
+	expview: 'view',
+	scroller: 'scroll-view',
+	slider: 'swiper',
+	view: 'view',
+	text: 'text',
+	picture: 'img',
+	image: 'img',
 };
 
 const COMPONENT_LIFETIMES_MAP = {
-  _constructor: 'created',
-  render: '',
-  componentDidMount: 'attached',
-  componentDidUpdate: '',
-  componentWillUnmount: 'detached'
+	_constructor: 'created',
+	render: '',
+	componentDidMount: 'attached',
+	componentDidUpdate: '',
+	componentWillUnmount: 'detached'
 };
 
 const COMPONENT_EVENT_MAP = {
-  onClick: 'bindtap',
+	onClick: 'bindtap',
 };
 
 const WXS_SYNTAX_MAP = {
-  for: 'wx:for',
-  forItem: 'wx:for-item',
-  forIndex: 'wx:for-index',
-  condition: 'wx:if'
+	for: 'wx:for',
+	forItem: 'wx:for-item',
+	forIndex: 'wx:for-index',
+	condition: 'wx:if'
 };
 
 // parse function, return params and content
 const parseFunction = func => {
-  const funcString = func.toString();
-  const params = funcString.match(/\([^\(\)]*\)/)[0].slice(1, -1);
-  const content = funcString.slice(
-    funcString.indexOf('{') + 1,
-    funcString.lastIndexOf('}')
-  );
-  return {
-    params,
-    content
-  };
+	const funcString = func.toString();
+	const params = funcString.match(/\([^\(\)]*\)/)[0].slice(1, -1);
+	const content = funcString.slice(
+		funcString.indexOf('{') + 1,
+		funcString.lastIndexOf('}')
+	);
+	return {
+		params,
+		content
+	};
 };
 
 const normalizeStyleValue = (key, value, config) => {
-  switch (key) {
-    case 'font-size':
-    case 'margin-left':
-    case 'margin-top':
-    case 'margin-right':
-    case 'margin-bottom':
-    case 'padding-left':
-    case 'padding-top':
-    case 'padding-right':
-    case 'padding-bottom':
-    case 'max-width':
-    case 'width':
-    case 'height':
-    case 'border-width':
-    case 'border-radius':
-    case 'top':
-    case 'left':
-    case 'right':
-    case 'bottom':
-    case 'line-height':
-    case 'letter-spacing':
-    case 'border-top-right-radius':
-    case 'border-top-left-radius':
-    case 'border-bottom-left-radius':
-    case 'border-bottom-right-radius':
-      value = '' + value;
-	  if(value.slice(-1) !== "%"){
-		  value = value.replace(/(rem)|(px)|(rpx)/, '');
-		  value = Number(value) * 2;
-		  value = '' + value;
-		  if (value.length > 3 && value.substr(-3, 3) == 'rem') {
-		    value = value.slice(0, -3) + 'rpx';
-		  } else {
-		    value += 'rpx';
-		  }
-	  }
-      break;
-    default:
-      break;
-  }
-  return value;
+	switch (key) {
+		case 'font-size':
+		case 'margin-left':
+		case 'margin-top':
+		case 'margin-right':
+		case 'margin-bottom':
+		case 'padding-left':
+		case 'padding-top':
+		case 'padding-right':
+		case 'padding-bottom':
+		case 'max-width':
+		case 'width':
+		case 'height':
+		case 'border-width':
+		case 'border-radius':
+		case 'top':
+		case 'left':
+		case 'right':
+		case 'bottom':
+		case 'line-height':
+		case 'letter-spacing':
+		case 'border-top-right-radius':
+		case 'border-top-left-radius':
+		case 'border-bottom-left-radius':
+		case 'border-bottom-right-radius':
+			value = '' + value;
+
+			if (value.slice(-1) !== "%") {
+				value = value.replace(/(rem)|(px)|(rpx)/, '');
+				value = Number(value) * 2;
+				value = '' + value;
+				if (value.length > 3 && value.substr(-3, 3) == 'rem') {
+					value = value.slice(0, -3) + 'rpx';
+				} else {
+					value += 'rpx';
+				}
+			}
+			
+			break;
+		default:
+			break;
+	}
+	return value;
 };
